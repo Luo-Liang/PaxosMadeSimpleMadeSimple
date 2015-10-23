@@ -21,8 +21,11 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CommandParsing.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="MainScript.py" />
-    <Compile Include="ServerNode.py">
+    <Compile Include="Proposer.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
