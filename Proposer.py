@@ -5,6 +5,8 @@ from twisted.internet import reactor
 from CommandParsing import *
 import socket
 import Queue
+import collections
+from LockService import LockService
 
 class ServerNode(DatagramProtocol):
     def __init__(self, acceptorAddresses, proposalNumberHop, startingRequestNumber):
@@ -17,22 +19,33 @@ class ServerNode(DatagramProtocol):
         self.CurrentInstanceId = 0
         self.RequestQueue = Queue.deque()
         self.Helping = False
+        #in order to support general application logic snap-ins, such as lock
+        #service,
+        #a processability will need to be tested before any attempt to process
+        #it happens.
+        #this is important as some commands require blocking behavior - these
+        #commands need to be temporarily postponed from proposing, otherwise it
+        #will cause endless proposal in the system (cannot execute)
+        self.ApplicationRequestDelayProcessSet = collections.MutableSet()
+        #Can use drop in replacement as long as the interface match.
+        #Decouple Paxos with Application Logic
+        self.ApplicationService = LockService()
 
-    def __TakeHop__():
+    def __TakeHop__(self):
         self.CurrentRequestNumber+=self.ProposalNumberHop
         self.ReadyList = []
         self.AcceptanceCount = 0
 
-    def __PrintInternal__(content):
+    def __PrintInternal__(self,content):
         print "[Proposer] " + content
 
-    def __IssuePromise__(value):
-        promiseObject = CommandObject(CommandType.Promise,
+    def __IssuePrepare__(self,value):
+        prepareObject = CommandObject(CommandType.Prepare,
                                       CurrentRequestNumber,
                                       CurrentInstanceId,
                                       value)
         for address in self.AcceptorAddresses:
-            self.transport.write(CommandObject.ConvertToString(promiseObject),address)
+            self.transport.write(CommandObject.ConvertToString(prepareObject),address)
 
     def datagramReceived(self, data, (host, port)):
         #what kind of command is it?
@@ -42,14 +55,14 @@ class ServerNode(DatagramProtocol):
             return
         if(cmdObj.Type == CommandType.Request):
             #save it first, as we may be busy processing other things.
-            self.RequestQueue.append(cmdObj.Value+(host,port))
+            self.RequestQueue.append(cmdObj.Value + (host,port))
             if len(self.RequestQueue) == 1:
                 #this is the only pending request.  We can send this promise
                 #request out to start consensus.
                 #we do NOT allow in flight messages, that means the proposer
                 #can NOT get ANY message ahead.
                 #somewhat easy to change
-                __IssuePromise__(cmdObj.Value)
+                __IssuePrepare__(cmdObj.Value+(host,port))
         elif cmdObj.Type == CommandType.Promise:
             #received a promise from a certain node.
             #do we have consensus for that instance?
@@ -101,29 +114,40 @@ class ServerNode(DatagramProtocol):
                 #acceptors, we require
                 #denial messages to be sent to proposer.
                 __TakeHop__()
-                __IssuePromise__(cmdObj.Value)
+                __IssuePrepare__(cmdObj.Value+(host,port))
         elif cmdObj.Type == CommandType.Acceptance:
                 #we need to accumulate acceptance per instance.
                 #if a majority of the acceptors have accepted a certain value,
                 #then that value has to be chosen.
                 self.AcceptanceCount+=1
                 if self.AcceptanceCount > self.AcceptorCount / 2:
+                    #clean up application request delay process queue, as some requests may be available to proceed.
+
                     #a consensus has been made.  fulfill this to
                     #the state machine.
                     __TakeHop__()
                     self.CurrentInstanceId+=1
-                    #pop one of the pending messages if necessary.
-                    if self.Helping == False:
-                        self.RequestQueue.popleft()
                     consensusValue = cmdObj.Value[0:-2]
                     address = cmdObj.Value[-2:]
-                    #deliver to state machine.
-                    #send response.
-                    responseObj = CommandObject(CommandType.Respond,
+                    requestProcessable = self.ApplicationService.ProcessRequest(consensusValue)
+                    #pop one of the pending messages if necessary.
+                    if self.Helping == False:
+                        #deliver to state machine.
+                        if requestProcessable:
+                            #Application Logic says we can process this request no problem.
+                            #note on the application prospective, this op may be illegal, because
+                            #consecutive LOCK(A) may appear on the Paxos Log, however, on the perspective of
+                            #PAXOS, this is legal, as it can portrait the consecutive LOCK(A)s as failed.
+                            self.RequestQueue.popleft()
+                            #send response.
+                            responseObj = CommandObject(CommandType.Respond,
                                                 -1,
                                                 -1,
                                                 consensusValue)
-                    self.transport.write(CommandObject.ConvertToString(responseObj),address)
+                            self.transport.write(CommandObject.ConvertToString(responseObj),address)
+                        else:
+                            self.ApplicationRequestDelayProcessSet.add(cmdObj.Value)
+
                     if len(self.RequestQueue) != 0:
                         #More work.
-                        __IssuePromise__(self.RequestQueue[0])
+                        __IssuePrepare__(self.RequestQueue[0])
