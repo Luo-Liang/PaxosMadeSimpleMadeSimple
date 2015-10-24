@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>7386bb85-e781-4fa7-acdb-72388c15670c</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>MainScript.py</StartupFile>
+    <StartupFile>Proposer.py</StartupFile>
     <SearchPath>.</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Acceptor.py" />
     <Compile Include="CommandParsing.py">
       <SubType>Code</SubType>
     </Compile>

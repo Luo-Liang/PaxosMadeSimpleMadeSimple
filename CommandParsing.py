@@ -1,5 +1,5 @@
-class CommandType:
-    Prepare, Promise, Respond, Accept = ("PREPARE","PROMISE","RESPOND","ACCEPT")
+﻿class CommandType:
+    Prepare, Promise, Respond, Accept, Request, Denial, Acceptance = ("PREPARE","PROMISE","RESPOND","ACCEPT","REQUEST","DENIAL","ACCEPTANCE")
 #equivalent-ish to
 #class CommandParsing
 #{
@@ -8,6 +8,14 @@ class CommandType:
 #   int RequestNumber
 #   [Optional]string Value
 #}
+
+#PREPARE: 
+
+
+#Promise Response Format:
+#Promise InstanceId RequestNumber (Largest Accepted Proposal Number, Accepted Value) 
+#                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                            Notice that value is a tuple. This is used to facillitate argument passing
 class CommandObject:
     def __init__(self, command, requestNumber, instanceId, value):
         self.Type = command
@@ -23,12 +31,13 @@ class CommandObject:
         cmd = str(segments[0])
         instanceId = int(segments[1])
         requestNumber = int(segments[2])
-        value = str(segments[3])
+        value = tuple(segments[3])
         return CommandObject(cmd,requestNumber,instanceId,value)
+
     @staticmethod
     def ConvertToString(cmdContent):
         #invoke intelliSense
         return "%s %d %d %s" % (cmdContent.Type,
                                 cmdContent.InstanceId,
                                 cmdContent.RequestNumber,
-                                cmdContent.Value)
+                                str(cmdontent.Value))
