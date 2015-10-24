@@ -42,7 +42,7 @@ class ServerNode(DatagramProtocol):
             return
         if(cmdObj.Type == CommandType.Request):
             #save it first, as we may be busy processing other things.
-            self.RequestQueue.append(cmdObj.Value)
+            self.RequestQueue.append(cmdObj.Value+(host,port))
             if len(self.RequestQueue) == 1:
                 #this is the only pending request.  We can send this promise
                 #request out to start consensus.
@@ -101,6 +101,7 @@ class ServerNode(DatagramProtocol):
                 #acceptors, we require
                 #denial messages to be sent to proposer.
                 __TakeHop__()
+                __IssuePromise__(cmdObj.Value)
         elif cmdObj.Type == CommandType.Acceptance:
                 #we need to accumulate acceptance per instance.
                 #if a majority of the acceptors have accepted a certain value,
@@ -112,10 +113,17 @@ class ServerNode(DatagramProtocol):
                     __TakeHop__()
                     self.CurrentInstanceId+=1
                     #pop one of the pending messages if necessary.
-                    if self.Helping==False:
+                    if self.Helping == False:
                         self.RequestQueue.popleft()
-                    consensusValue = cmdObj.Value
+                    consensusValue = cmdObj.Value[0:-2]
+                    address = cmdObj.Value[-2:]
                     #deliver to state machine.
+                    #send response.
+                    responseObj = CommandObject(CommandType.Respond,
+                                                -1,
+                                                -1,
+                                                consensusValue)
+                    self.transport.write(CommandObject.ConvertToString(responseObj),address)
                     if len(self.RequestQueue) != 0:
                         #More work.
                         __IssuePromise__(self.RequestQueue[0])

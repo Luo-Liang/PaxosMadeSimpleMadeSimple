@@ -25,6 +25,9 @@
     <Compile Include="CommandParsing.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="LockService.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="MainScript.py" />
     <Compile Include="Proposer.py">
       <SubType>Code</SubType>
