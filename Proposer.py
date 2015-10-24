@@ -5,7 +5,6 @@ from twisted.internet import reactor
 from CommandParsing import *
 import socket
 import Queue
-import collections
 from LockService import LockService
 
 class ServerNode(DatagramProtocol):
@@ -26,10 +25,10 @@ class ServerNode(DatagramProtocol):
         #this is important as some commands require blocking behavior - these
         #commands need to be temporarily postponed from proposing, otherwise it
         #will cause endless proposal in the system (cannot execute)
-        self.ApplicationRequestDelayProcessSet = collections.MutableSet()
         #Can use drop in replacement as long as the interface match.
         #Decouple Paxos with Application Logic
         self.ApplicationService = LockService()
+        self.ApplicationServiceDelayProcessQueue = []
 
     def __TakeHop__(self):
         self.CurrentRequestNumber+=self.ProposalNumberHop
@@ -62,7 +61,7 @@ class ServerNode(DatagramProtocol):
                 #we do NOT allow in flight messages, that means the proposer
                 #can NOT get ANY message ahead.
                 #somewhat easy to change
-                __IssuePrepare__(cmdObj.Value+(host,port))
+                __IssuePrepare__(cmdObj.Value + (host,port))
         elif cmdObj.Type == CommandType.Promise:
             #received a promise from a certain node.
             #do we have consensus for that instance?
@@ -114,15 +113,13 @@ class ServerNode(DatagramProtocol):
                 #acceptors, we require
                 #denial messages to be sent to proposer.
                 __TakeHop__()
-                __IssuePrepare__(cmdObj.Value+(host,port))
+                __IssuePrepare__(cmdObj.Value + (host,port))
         elif cmdObj.Type == CommandType.Acceptance:
                 #we need to accumulate acceptance per instance.
                 #if a majority of the acceptors have accepted a certain value,
                 #then that value has to be chosen.
                 self.AcceptanceCount+=1
                 if self.AcceptanceCount > self.AcceptorCount / 2:
-                    #clean up application request delay process queue, as some requests may be available to proceed.
-
                     #a consensus has been made.  fulfill this to
                     #the state machine.
                     __TakeHop__()
@@ -131,23 +128,41 @@ class ServerNode(DatagramProtocol):
                     address = cmdObj.Value[-2:]
                     requestProcessable = self.ApplicationService.ProcessRequest(consensusValue)
                     #pop one of the pending messages if necessary.
+                    queuedTask = self.RequestQueue.popleft()
                     if self.Helping == False:
                         #deliver to state machine.
                         if requestProcessable:
-                            #Application Logic says we can process this request no problem.
-                            #note on the application prospective, this op may be illegal, because
-                            #consecutive LOCK(A) may appear on the Paxos Log, however, on the perspective of
-                            #PAXOS, this is legal, as it can portrait the consecutive LOCK(A)s as failed.
-                            self.RequestQueue.popleft()
+                            #Application Logic says we can process this request
+                            #no problem.
+                            #note on the application prospective, this op may
+                            #be illegal, because
+                            #consecutive LOCK(A) may appear on the Paxos Log,
+                            #however, on the perspective of
+                            #PAXOS, this is legal, as it can portrait the
+                            #consecutive LOCK(A)s as failed.
                             #send response.
+                            #duplicate messages will be sent from EACH and
+                            #EVERY server, it is the client's responsibility to
+                            #deal with duplicates (using sequence number)
                             responseObj = CommandObject(CommandType.Respond,
                                                 -1,
                                                 -1,
                                                 consensusValue)
                             self.transport.write(CommandObject.ConvertToString(responseObj),address)
+                            #clean up application request delay process queue, as some
+                            #requests may be available to proceed.
+                            self.ApplicationServiceDelayProcessQueue = []
                         else:
-                            self.ApplicationRequestDelayProcessSet.add(cmdObj.Value)
+                            #try again, put to last.
+                            self.RequestQueue.append(queuedTask)
+                            #needs to make sure we are not trying everything over and over again, e.g.
+                            #Lock(A) Lock(A)....
+                            self.ApplicationServiceDelayProcessQueue.append(queuedTask)
 
                     if len(self.RequestQueue) != 0:
                         #More work.
-                        __IssuePrepare__(self.RequestQueue[0])
+                        #see if this thing is in delayed processing queue.
+                        for i in range(len(self.RequestQueue)):
+                            if self.RequestQueue[i] not in self.ApplicationServiceDelayProcessQueue:
+                                __IssuePrepare__(self.RequestQueue[0])
+                                break

@@ -1,5 +1,5 @@
 ﻿class CommandType:
-    Prepare, Promise, Respond, Accept, Request, Denial, Acceptance = ("PREPARE","PROMISE","RESPOND","ACCEPT","REQUEST","DENIAL","ACCEPTANCE")
+    Prepare, Promise, Respond, Accept, Request, Denial, Acceptance, Consensus = ("PREPARE","PROMISE","RESPOND","ACCEPT","REQUEST","DENIAL","ACCEPTANCE","CONSENSUS")
 #equivalent-ish to
 #class CommandParsing
 #{
