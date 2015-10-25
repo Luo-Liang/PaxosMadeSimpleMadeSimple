@@ -5,12 +5,15 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>7386bb85-e781-4fa7-acdb-72388c15670c</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Proposer.py</StartupFile>
+    <StartupFile>MainScript.py</StartupFile>
     <SearchPath>.</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>PaxosMadeSimple</Name>
     <RootNamespace>PaxosMadeSimple</RootNamespace>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <CommandLineArguments>-i 0 -s "127.0.0.1" -p 29367</CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
