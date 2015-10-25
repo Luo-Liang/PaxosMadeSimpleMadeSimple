@@ -170,21 +170,16 @@ class ServerNode(DatagramProtocol):
                         #requests may be available to proceed.
                         self.ApplicationServiceDelayProcessQueue = []
                         #self.RequestQueue.popleft()
-                    else:
-                    #elif self.Helping == False:
+                    #else:
+                    elif self.Helping == False:
                         #try again, put to last.
                         #self.RequestQueue.popleft()
-                        if self.Helping == False:
-                            queuedTask = self.RequestQueue.popleft()
-                            self.RequestQueue.append(queuedTask)
-                            #needs to make sure we are not trying everything
-                            #over and over again, e.g.
-                            #Lock(A) Lock(A)....
-                            self.ApplicationServiceDelayProcessQueue.append(queuedTask)
-                        else:
-                            self.RequestQueue.append(cmdObj.Value)
-                            self.ApplicationServiceDelayProcessQueue.append(cmdObj.Value)
-
+                        queuedTask = self.RequestQueue.popleft()
+                        self.RequestQueue.append(queuedTask)
+                        #needs to make sure we are not trying everything
+                        #over and over again, e.g.
+                        #Lock(A) Lock(A)....
+                        self.ApplicationServiceDelayProcessQueue.append(queuedTask)
                         self.__PrintInternal__("Delay Queue %s" % str(self.ApplicationServiceDelayProcessQueue))
                     #Send Consensus notification, so that acceptors can fix
                     #(potentially faulty) instance numbers and reset request
