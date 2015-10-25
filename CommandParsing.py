@@ -1,4 +1,6 @@
-﻿class CommandType:
+﻿from ast import literal_eval as make_tuple
+
+class CommandType:
     Prepare, Promise, Respond, Accept, Request, Denial, Acceptance, Consensus = ("PREPARE","PROMISE","RESPOND","ACCEPT","REQUEST","DENIAL","ACCEPTANCE","CONSENSUS")
 #equivalent-ish to
 #class CommandParsing
@@ -27,19 +29,19 @@ class CommandObject:
     def ParseFromString(cmdContent):
         #invoke intelliSense
         strRep = str(cmdContent)
-        segments = strRep.split(' ')
+        segments = strRep.split(':')
         cmd = str(segments[0])
         instanceId = int(segments[1])
         requestNumber = int(segments[2])
-        value = tuple(segments[3])
+        value = make_tuple(segments[3])
         return CommandObject(cmd,requestNumber,instanceId,value)
 
     @staticmethod
     def ConvertToString(cmdContent):
         #invoke intelliSense
-        return "%s %d %d %s" % (cmdContent.Type,
+        return "%s:%d:%d:%s" % (cmdContent.Type,
                                 cmdContent.InstanceId,
                                 cmdContent.RequestNumber,
-                                str(cmdontent.Value))
+                                str(cmdContent.Value))
 
 

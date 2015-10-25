@@ -15,6 +15,7 @@ class ServerNode(DatagramProtocol):
         self.AcceptorAddresses = acceptorAddresses
         self.ProposalNumberHop = proposalNumberHop
         self.CurrentRequestNumber = startingRequestNumber
+        self.ServerIndex = startingRequestNumber
         self.CurrentInstanceId = 0
         self.RequestQueue = Queue.deque()
         self.Helping = False
@@ -36,13 +37,15 @@ class ServerNode(DatagramProtocol):
         self.AcceptanceCount = 0
 
     def __PrintInternal__(self,content):
-        print "[Proposer] " + content
+        print ("[Proposer %d] " % self.ServerIndex) + content
 
     def __IssuePrepare__(self,value):
+        self.__PrintInternal__("Prepared Issued %s" % str(value))
         prepareObject = CommandObject(CommandType.Prepare,
-                                      CurrentRequestNumber,
-                                      CurrentInstanceId,
+                                      self.CurrentRequestNumber,
+                                      self.CurrentInstanceId,
                                       value)
+        self.__PrintInternal__("Prepared Issued %s" % str(self.AcceptorAddresses))
         for address in self.AcceptorAddresses:
             self.transport.write(CommandObject.ConvertToString(prepareObject),address)
 
@@ -53,6 +56,7 @@ class ServerNode(DatagramProtocol):
         if cmdObj.Type != CommandType.Request and (cmdObj.RequestNumber != self.CurrentRequestNumber or cmdObj.InstanceId != self.CurrentInstanceId):
             return
         if(cmdObj.Type == CommandType.Request):
+            self.__PrintInternal__("Request Receive " + CommandObject.ConvertToString(cmdObj))
             #save it first, as we may be busy processing other things.
             self.RequestQueue.append(cmdObj.Value + (host,port))
             if len(self.RequestQueue) == 1:
@@ -61,13 +65,15 @@ class ServerNode(DatagramProtocol):
                 #we do NOT allow in flight messages, that means the proposer
                 #can NOT get ANY message ahead.
                 #somewhat easy to change
-                __IssuePrepare__(cmdObj.Value + (host,port))
+                self.__IssuePrepare__(cmdObj.Value + (host,port))
         elif cmdObj.Type == CommandType.Promise:
             #received a promise from a certain node.
             #do we have consensus for that instance?
 
-            instStat = self.ReadyList.append((host,port) + cmdObj.Value)
-            if len(instStat) > self.AccepterCount / 2:
+            self.__PrintInternal__("Promise Receive")
+            self.ReadyList.append((host,port) + cmdObj.Value)
+            instStat = self.ReadyList
+            if len(instStat) > self.AcceptorCount / 2:
                 #a consensus for that is reached.
                 #issue an accept to everyone in the pool
                 #find the largest numbered accepted value
@@ -83,7 +89,7 @@ class ServerNode(DatagramProtocol):
                     self.Helping = False
 
                 else:
-                    acceptedValue = tuple([largestObj[3]])
+                    acceptedValue = tuple([largestObj[3:]])
                     #The next series of Acceptance will result in a request to
                     #NOT pop from the Queue.
                     #We've learned that in this instance, someone has already
@@ -92,10 +98,10 @@ class ServerNode(DatagramProtocol):
                     self.Helping = True 
                 #broadcast this to this set.
                 acceptObj = CommandObject(CommandType.Accept,
-                                          CurrentRequestNumber,
-                                          CurrentInstanceId,
+                                          self.CurrentRequestNumber,
+                                          self.CurrentInstanceId,
                                           acceptedValue)
-                for address in [x[:2] in self.ReadyList]:
+                for address in [x[:2] for x in self.ReadyList]:
                     self.transport.write(CommandObject.ConvertToString(acceptObj),address)
                 #avoid other later messages to trigger this multiple times.
                 self.ReadyList = []
@@ -112,17 +118,17 @@ class ServerNode(DatagramProtocol):
                 #since the acceptance of accept messages are sent from
                 #acceptors, we require
                 #denial messages to be sent to proposer.
-                __TakeHop__()
-                __IssuePrepare__(cmdObj.Value + (host,port))
+                self.__TakeHop__()
+                self.__IssuePrepare__(cmdObj.Value + (host,port))
         elif cmdObj.Type == CommandType.Acceptance:
+                self.__PrintInternal__("Acceptance Received")
+                self.AcceptanceCount+=1
                 #we need to accumulate acceptance per instance.
                 #if a majority of the acceptors have accepted a certain value,
                 #then that value has to be chosen.
-                self.AcceptanceCount+=1
                 if self.AcceptanceCount > self.AcceptorCount / 2:
                     #a consensus has been made.  fulfill this to
                     #the state machine.
-                    self.CurrentInstanceId+=1
                     consensusValue = cmdObj.Value[0:-2]
                     address = cmdObj.Value[-2:]
                     requestProcessable = self.ApplicationService.ProcessRequest(consensusValue)
@@ -165,10 +171,12 @@ class ServerNode(DatagramProtocol):
                     consensusObj = CommandObject(CommandType.Consensus,
                                                  0,
                                                  self.CurrentInstanceId,
-                                                 tuple([-1]))
-                    __TakeHop__()
+                                                 consensusValue)
+                    self.__TakeHop__()
                     for address in self.AcceptorAddresses:
                         self.transport.write(CommandObject.ConvertToString(consensusObj),address)
+                    self.__PrintInternal__("Consensus Send")
+                    self.CurrentInstanceId+=1
                     if len(self.RequestQueue) != 0:
                         #More work.
                         #see if this thing is in delayed processing queue.
@@ -179,5 +187,5 @@ class ServerNode(DatagramProtocol):
                         #first place.
                         for i in range(len(self.RequestQueue)):
                             if self.RequestQueue[i] not in self.ApplicationServiceDelayProcessQueue:
-                                __IssuePrepare__(self.RequestQueue[0])
+                                self.__IssuePrepare__(self.RequestQueue[0])
                                 break
