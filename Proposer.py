@@ -18,7 +18,8 @@ class ServerNode(DatagramProtocol):
         self.ServerIndex = startingRequestNumber
         self.CurrentInstanceId = 0
         self.RequestQueue = Queue.deque()
-        #self.Helping = False
+        #self.ClientRequests = Queue.deque()
+        self.Helping = False
         #in order to support general application logic snap-ins, such as lock
         #service,
         #a processability will need to be tested before any attempt to process
@@ -88,7 +89,7 @@ class ServerNode(DatagramProtocol):
                     #not safe to pop even if loss of message is not considered.
                     #no guarentee of acceptors are determined yet.
                     acceptedValue = self.RequestQueue[0]
-                    #self.Helping = False
+                    self.Helping = False
 
                 else:
                     acceptedValue = largestObj[1]
@@ -97,7 +98,7 @@ class ServerNode(DatagramProtocol):
                     #We've learned that in this instance, someone has already
                     #announced they have accepted some other value.  We must
                     #push this value through (helping)
-                    #self.Helping = True 
+                    self.Helping = True 
 
                 #broadcast this to this set.
                 acceptObj = CommandObject(CommandType.Accept,
@@ -141,7 +142,7 @@ class ServerNode(DatagramProtocol):
                     if requestProcessable:
                         #deliver to state machine.
                         #if self.Helping == False:
-                        if cmdObj.Value == self.RequestQueue [0]:
+                        if self.Helping == False:
                             #Application Logic says we can process this request
                             #no problem.
                             #note on the application prospective, this op may
@@ -173,7 +174,7 @@ class ServerNode(DatagramProtocol):
                     #elif self.Helping == False:
                         #try again, put to last.
                         #self.RequestQueue.popleft()
-                        if cmdObj.Value == self.RequestQueue[0]:
+                        if self.Helping == False:
                             queuedTask = self.RequestQueue.popleft()
                             self.RequestQueue.append(queuedTask)
                             #needs to make sure we are not trying everything
