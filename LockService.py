@@ -2,11 +2,14 @@
 #PAXOS is by no means coupled with this logic.
 #Drop in replacement is possible as long as the CommandParsing 
 class LockService:
-    def __init__(self):
+    def __init__(self, ID):
+        self.ID = ID
         self.EngagedLocks = []
     
     def ProcessRequest(self,value):
         #client dedup
+        print "LockService ID" + str(self.ID) + " " + str(value)
+
         seq = value[0]
         action = value[1]
         object = value[2]
