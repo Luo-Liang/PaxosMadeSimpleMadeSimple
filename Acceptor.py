@@ -69,7 +69,8 @@ class AcceptorNode(DatagramProtocol):
 				#print "-->" + "Send denial request " + str(denial_cmd_obj.RequestNumber) + " in the prepare phase"
 
 		elif cmd_obj.Type == CommandType.Accept:
-			if cmd_obj.RequestNumber >= self.RequestNumberQueue[cmd_obj.InstanceId]:
+            #the promise says we cannot accept anything less than previously promised number.
+			if cmd_obj.RequestNumber >= self.ProposalQueue[cmd_obj.InstanceId]:
 				# Accept the value
 				acceptance_cmd_obj = CommandObject(CommandType.Acceptance,
 													cmd_obj.RequestNumber,
