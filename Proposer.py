@@ -58,7 +58,7 @@ class ServerNode(DatagramProtocol):
         if(cmdObj.Type == CommandType.Request):
             self.__PrintInternal__("Request Receive " + CommandObject.ConvertToString(cmdObj))
             #save it first, as we may be busy processing other things.
-            if len(self.RequestQueue) == 1 or all(self.RequestQueue,lambda p: p in self.ApplicationServiceDelayProcessQueue):
+            if len(self.RequestQueue) == 0 or len(requestQufilter(lambda p: p in self.ApplicationServiceDelayProcessQueue,self.RequestQueue)) == len(self.RequestQueue):
                 #this is the only pending request.  We can send this promise
                 #request out to start consensus.
                 #we do NOT allow in flight messages, that means the proposer
