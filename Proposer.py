@@ -122,7 +122,6 @@ class ServerNode(DatagramProtocol):
                 if self.AcceptanceCount > self.AcceptorCount / 2:
                     #a consensus has been made.  fulfill this to
                     #the state machine.
-                    __TakeHop__()
                     self.CurrentInstanceId+=1
                     consensusValue = cmdObj.Value[0:-2]
                     address = cmdObj.Value[-2:]
@@ -149,19 +148,35 @@ class ServerNode(DatagramProtocol):
                                                 -1,
                                                 consensusValue)
                             self.transport.write(CommandObject.ConvertToString(responseObj),address)
-                            #clean up application request delay process queue, as some
+                            #clean up application request delay process queue,
+                            #as some
                             #requests may be available to proceed.
                             self.ApplicationServiceDelayProcessQueue = []
                         else:
                             #try again, put to last.
                             self.RequestQueue.append(queuedTask)
-                            #needs to make sure we are not trying everything over and over again, e.g.
+                            #needs to make sure we are not trying everything
+                            #over and over again, e.g.
                             #Lock(A) Lock(A)....
                             self.ApplicationServiceDelayProcessQueue.append(queuedTask)
-
+                    #Send Consensus notification, so that acceptors can fix
+                    #(potentially faulty) instance numbers and reset request
+                    #number
+                    consensusObj = CommandObject(CommandType.Consensus,
+                                                 0,
+                                                 self.CurrentInstanceId,
+                                                 tuple([-1]))
+                    __TakeHop__()
+                    for address in self.AcceptorAddresses:
+                        self.transport.write(CommandObject.ConvertToString(consensusObj),address)
                     if len(self.RequestQueue) != 0:
                         #More work.
                         #see if this thing is in delayed processing queue.
+                        #clients response may appear out of order, however, if
+                        #the clients' logic is correct, then this will not be
+                        #problematic, as if requests are not concurrent, then
+                        #the clients will probably serialize the request in the
+                        #first place.
                         for i in range(len(self.RequestQueue)):
                             if self.RequestQueue[i] not in self.ApplicationServiceDelayProcessQueue:
                                 __IssuePrepare__(self.RequestQueue[0])
