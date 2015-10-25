@@ -58,7 +58,6 @@ class ServerNode(DatagramProtocol):
         if(cmdObj.Type == CommandType.Request):
             self.__PrintInternal__("Request Receive " + CommandObject.ConvertToString(cmdObj))
             #save it first, as we may be busy processing other things.
-            self.RequestQueue.append(cmdObj.Value + (host,port))
             if len(self.RequestQueue) == 1 or all(self.RequestQueue,lambda p: p in self.ApplicationServiceDelayProcessQueue):
                 #this is the only pending request.  We can send this promise
                 #request out to start consensus.
@@ -66,6 +65,7 @@ class ServerNode(DatagramProtocol):
                 #can NOT get ANY message ahead.
                 #somewhat easy to change
                 self.__IssuePrepare__(cmdObj.Value + (host,port))
+            self.RequestQueue.append(cmdObj.Value + (host,port))
                 
         elif cmdObj.Type == CommandType.Promise:
             #received a promise from a certain node.
