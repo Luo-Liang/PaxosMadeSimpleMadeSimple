@@ -43,8 +43,7 @@ class ServerNode(DatagramProtocol):
 
 
     def __PrintInternal__(self,content):
-#        if self.ServerIndex == 2:
-            print ("[Proposer %d] " % self.ServerIndex) + content
+        print ("[Proposer %d] " % self.ServerIndex) + content
 
     def __IssuePrepare__(self,value):
         prepareObject = CommandObject(CommandType.Prepare,
@@ -81,7 +80,7 @@ class ServerNode(DatagramProtocol):
             self.__PrintInternal__("Promise Receive %s" % CommandObject.ConvertToString(cmdObj))
             self.ReadyList.append(cmdObj.Value + tuple([(host, port)]))
             instStat = self.ReadyList
-            if len(instStat) > self.AcceptorCount:
+            if len(instStat) > self.AcceptorCount / 2:
                 #issue an accept to everyone in the pool
                 #find the largest numbered accepted value
                 largestObj = max(instStat,key=lambda p: p[0])
@@ -116,7 +115,7 @@ class ServerNode(DatagramProtocol):
                 self.MajorityPromiseReceived = True
                 self.MajorityAcceptObj = acceptObj
             elif self.MajorityPromiseReceived:
-                self.transport.write(CommandObject.ConvertToString(self.MajorityAcceptObj),address)
+                self.transport.write(CommandObject.ConvertToString(self.MajorityAcceptObj),(host, port))
                 #no need to worry about this instance anymore, as recovery is
                 #not necessary.
                 #The burden is on acceptors - they could have promised to
@@ -192,17 +191,14 @@ class ServerNode(DatagramProtocol):
                     #Send Consensus notification, so that acceptors can fix
                     #(potentially faulty) instance numbers and reset request
                     #number
-                    self.__PrintInternal__(str(requestProcessable))
                     self.__TakeHop__()
                     #self.__PrintInternal__("Consensus Send %s" %
                     #CommandObject.ConvertToString(consensusObj))
                     self.CurrentInstanceId+=1
                     self.CurrentRequestNumber = 0
 
-                    self.__PrintInternal__(str(self.CurrentInstanceId))
-
                     #print str(self.ReqeustQueue)
-                    self.__PrintInternal__(str(self.RequestQueue))
+                    #self.__PrintInternal__(str(self.RequestQueue))
                     if len(self.RequestQueue) != 0:
                         #More work.
                         #see if this thing is in delayed processing queue.
