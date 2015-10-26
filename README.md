@@ -1,7 +1,8 @@
 # PaxosMadeSimpleMadeSimple
-# Still not simple enough!
-# Developer: Liang Luo & Ming Liu
+## Still not simple enough!
+### Developer: Liang Luo & Ming Liu
 
+<<<<<<< HEAD
 1. Introduction
 In this project, we implement a replicated state machine and use a simple lock service to demonstrate its correctness. Our implemenation is based on the traditional paxos paper. The whole project includes three parts: lock service client, paxos proposer, and paxos acceptor. The lock service client issues lock requests to a distinguised proposer, which uses the paxos algorithm to achieve the consensus among all the acceptors. We take the traditional paxos method that uses two phases protocols on both proposers and acceptors. Our design can handle multiple instances at the same time but can only execute them serially.
 The organization of this writeup is as follows: Section 2 talks in details about the design and implementation. Section 3 gives an example on how to use our codes. Section 4 presents some discussion. We end up with a case study and trace analysis.
@@ -14,12 +15,19 @@ We make the following assumptions:
 (3) Instances execute in serial;
 (4) No node recovery;
 (5) No message resending;
+=======
+#### 1. Introduction
+In this project, we implement a replicated state machine and use a simple Lock service to demonstrate it.
+
+#### 2. Design & Implementation
+##### 2-1. Assumptions
+>>>>>>> 2483f5189449a6b7924ce4cd8d05bce23d6b6024
 
 ##### 2-2. Proposer
 
 In the original Paxos paper, Lamport purposed that proposers can skip ahead and execute sequences of Paxos requests concurrently. Here we strip off the ability of executing concurrent requests in favor of simplicity.
 
-![Main Window](https://raw.github.com/Luo-Liang/PaxosMadeSimpleMadeSimple/figures/concurrentVsSerialPaxos.png)
+![Figure1](https://raw.github.com/Luo-Liang/PaxosMadeSimpleMadeSimple/master/figures/concurrentVsSerialPaxos.png)
 
 As shown above, the two implementations are functionally equivalent.
 
@@ -31,7 +39,7 @@ In times of leader failure, secondary proposers must take place of it. It is the
 
 To make sure duplicated requests are not executed, each request is associated with a sequence number, and servers only execute each command from each client once (though we skip this check in the execution logic for this matter).
 
-Proposers, because they are lazy, sometimes need to catch up with the latest happenings in the world. This also happens when new proposers are added. They would learn the previous consensus results by executing Paxos Consensus from instance 0 all the way up to the most recent, and then it tries to purpose whatever it wants in the current instance. Using this way, we do not differentiate between newly added servers and lazy servers, and the situations are handled uniformly.
+Proposers, because they are lazy, sometimes need to catch up with the latest happenings in the world. This also happens when new proposers are added. They would learn the previous consensus results by executing Paxos Consensus from instance 0 all the way up to the most recent, and then it tries to purpose whatever it wants in the current instance. Using this, we do not differentiate between newly added servers and lazy servers, and the situations are handled uniformly.
 
 Each request from a user is queued in a server local queue, and is executed in a serial manner when consensus is reached.
 
@@ -81,3 +89,112 @@ Lock will only return when it is successfully acquired, while unlock returns imm
 
 ##### 6.1 Trace Analysis
 
+Here is a simple trace resulted from executing the following client commands,
+
+    printf "REQUEST:-1:-1:(21,'LOCK','a')" | nc -u 127.0.0.1 29367 &
+    printf "REQUEST:-1:-1:(22,'UNLOCK','a')" | nc -u 127.0.0.1 29367 &
+	printf "REQUEST:-1:-1:(23,'LOCK','b')" | nc -u 127.0.0.1 29367 &
+	printf "REQUEST:-1:-1:(24,'UNLOCK','b')" | nc -u 127.0.0.1 29367 &
+
+Basically this instantiate 4 clients and send interleaved LOCK and UNLOCK commands. The expected result is that all 4 commands are executed, though order may vary.
+
+To give a little bit of background, 3 Paxos node is used, and they are located at *localhost:29367-29369*, and only print outs for Proposer 0 is shown to avoid distracting.
+
+Trace is analyzed in-line. And the format is shown below:
+
+-> *CommandType*:*InstanceId*:*RequestNumber*:*(value)* <- 
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(22, 'UNLOCK', 'a')												  <br/>
+// Proposer has received the request to unlock a.																  <br/>
+> [Proposer 0] Prepared Issued PREPARE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')								  <br/>
+> [Proposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
+> [Proposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
+// A majority of promises is received. There is no need to wait on the other ones. Issue Accept messages.		  <br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
+// A majority of acceptances are received. 																  <br/>
+> LockService ID0 (22, 'UNLOCK', 'a') 																		  <br/>
+//A consensus has reached, deliver this to application service. 											  <br/>
+//The following are almost identical.                            											  <br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(22, 'UNLOCK', 'a')										  <br/>
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(23, 'LOCK', 'b')												  <br/>
+> [Proposer 0] Prepared Issued PREPARE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')								  <br/>
+> [Proposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(21, 'LOCK', 'a')												  <br/>
+> [Proposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(24, 'UNLOCK', 'b')												  <br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')							  <br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')							  <br/>
+> LockService ID0 (23, 'LOCK', 'b')																				  <br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(23, 'LOCK', 'b')											  <br/>
+> [Proposer 0] Prepared Issued PREPARE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')								  <br/>
+> [Proposer 0] Packet Ignored PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))							  <br/>
+// A dated Promise from Instance 0 Request 0 has received, we just ignore it.									  <br/>
+> [Proposer 0] Packet Ignored PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
+> [Proposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
+> [Proposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')							  <br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')							  <br/>
+> LockService ID0 (21, 'LOCK', 'a')																				  <br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(21, 'LOCK', 'a')						<br/>
+> [Proposer 0] Prepared Issued PREPARE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')			<br/>
+> [Proposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
+> [Proposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
+> [Proposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
+> LockService ID0 (24, 'UNLOCK', 'b')														<br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(24, 'UNLOCK', 'b')					<br/>
+> [Proposer 0] Packet Ignored PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))		<br/>
+> [Proposer 0] Packet Ignored PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))		<br/>
+																							
+As another illustration, consider the following command and its resulting trace.			
+																							
+    printf "REQUEST:-1:-1:(25,'LOCK','a')" | nc -u 127.0.0.1 29367 &						
+	printf "REQUEST:-1:-1:(26,'UNLOCK','a')" | nc -u 127.0.0.1 29367 &
+	printf "REQUEST:-1:-1:(27,'LOCK','b')" | nc -u 127.0.0.1 29367 &
+	printf "REQUEST:-1:-1:(28,'UNLOCK','b')" | nc -u 127.0.0.1 29367 &
+
+	printf "REQUEST:-1:-1:(29,'LOCK','a')" | nc -u 127.0.0.1 29368 &
+	printf "REQUEST:-1:-1:(30,'UNLOCK','a')" | nc -u 127.0.0.1 29368 &
+	printf "REQUEST:-1:-1:(31,'LOCK','b')" | nc -u 127.0.0.1 29368 &
+	printf "REQUEST:-1:-1:(32,'UNLOCK','b')" | nc -u 127.0.0.1 29368 &
+
+	printf "REQUEST:-1:-1:(33,'LOCK','a')" | nc -u 127.0.0.1 29369 &
+	printf "REQUEST:-1:-1:(34,'UNLOCK','a')" | nc -u 127.0.0.1 29369 &
+	printf "REQUEST:-1:-1:(35,'LOCK','b')" | nc -u 127.0.0.1 29369 &
+	printf "REQUEST:-1:-1:(36,'UNLOCK','b')" | nc -u 127.0.0.1 29369 &
+
+Here we send multiple commands to multiple servers. We stripped off the traces from the servers and only left the print outs from lock service. This is the best way to evaluate whether all paxos nodes are executing the exact same sequence of commands.
+
+> LockService ID0 (25, 'LOCK', 'a')		   <br/>
+> LockService ID0 (27, 'LOCK', 'b')		   <br/>
+> LockService ID0 (28, 'UNLOCK', 'b')	   <br/>
+> LockService ID1 (25, 'LOCK', 'a')		   <br/>
+> LockService ID1 (27, 'LOCK', 'b')		   <br/>
+> LockService ID2 (25, 'LOCK', 'a')		   <br/>
+> LockService ID0 (26, 'UNLOCK', 'a') 	   <br/>
+> LockService ID1 (28, 'UNLOCK', 'b')	   <br/>
+> LockService ID2 (27, 'LOCK', 'b')		   <br/>
+> LockService ID1 (26, 'UNLOCK', 'a')	   <br/>
+> LockService ID1 (30, 'UNLOCK', 'a')	   <br/>
+> LockService ID2 (28, 'UNLOCK', 'b')	   <br/>
+> LockService ID1 (31, 'LOCK', 'b')		   <br/>
+> LockService ID2 (26, 'UNLOCK', 'a')	   <br/>
+> LockService ID1 (29, 'LOCK', 'a')		   <br/>
+> LockService ID2 (30, 'UNLOCK', 'a')	   <br/>
+> LockService ID1 (32, 'UNLOCK', 'b')	   <br/>
+> LockService ID2 (31, 'LOCK', 'b')		   <br/>
+> LockService ID2 (29, 'LOCK', 'a')		   <br/>
+> LockService ID2 (32, 'UNLOCK', 'b')	   <br/>
+> LockService ID2 (33, 'LOCK', 'a')		   <br/>
+> LockService ID2 (35, 'LOCK', 'b')		   <br/>
+> LockService ID2 (34, 'UNLOCK', 'a')	   <br/>
+> LockService ID2 (36, 'UNLOCK', 'b')	   <br/>
+> LockService ID2 (33, 'LOCK', 'a')		   <br/>
+
+To make sense of this trace, let's re-arrange them with a node-centric view instead of time-centric view. The number denoted below means packet sequence number. We use one sequence to identify an unique packet across all clients in order to analyze this better.
+
+LockService ID0: 25-27-28-26 <br/>
+LockService ID1: 25-27-28-26-30-31-29-32 <br/>
+LockService ID2: 25-27-28-26-30-31-29-32-33-35-34-36-33 <br/>
+
+Note that according to the lazy proposer design, since node0 and node1 have no more requests, they stopped learning consensus values when they finished processing their requests. The semantic meaning of this trace is obvious. Note the interest part here is request 33 is attempted twice because it cannot be executed due to lock A is unavailable at the first time. It is subsequently attempted.
