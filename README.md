@@ -1,5 +1,25 @@
 # PaxosMadeSimpleMadeSimple
-Still not simple enough!
+# Still not simple enough!
+
+# Developer: Liang Luo & Ming Liu
+
+1. Introduction
+
+2. Design & Implementation
+2-1. Assumptions
+
+2-2. Proposer
+
+2-3. Lock service
+
+2-4. Acceptor
+
+3. How to run the experiment
+
+4. Trace Analysis
+
+5. Discussions
+
 
 This is a somewhat easy toy Paxos implementation.
 The Paxos serves as an infraustructure for the application layer protocols.
