@@ -43,5 +43,3 @@ class CommandObject:
                                 cmdContent.InstanceId,
                                 cmdContent.RequestNumber,
                                 str(cmdContent.Value))
-
-

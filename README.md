@@ -1,9 +1,9 @@
 # PaxosMadeSimpleMadeSimple
 # Still not simple enough!
-
 # Developer: Liang Luo & Ming Liu
 
 1. Introduction
+In this project, we implement a replicated state machine and use a simple Lock service to demonstrate it.
 
 2. Design & Implementation
 2-1. Assumptions
@@ -13,12 +13,24 @@
 2-3. Lock service
 
 2-4. Acceptor
+The data structure of the acceptor includes three queues: RequestNumberQueue, ConsensusQueue, and ProposalQueue. The RequestNumberQueue saves the highest accepted proposal number for each instance while the ConsensusQueue and ProposalQueue record the accepted value and promised proposal number of each instance.
+
+The protocol of the acceptor works as follows:
+(a) When it receives the PREPARE request, it firstly compares with its promised proposal number. If it's higher, the acceptor will send a promise request with a tuple <highest accepted number, accepted value>. Note that the highest accepted number is -1 in the beginning. Meanwhile, it also updates its ProposalQueue. If not, the acceptor will send a DENIAL request.
+(b) When it receives the ACCEPT request, it also compared with its promised pproposal number. If it's higher or equal, the acceptor will accept this value and update its RequestNumberQueue and ConsensusQueue. If not, the acceptor will send a DENIAL request.
+
+
+ save the 
 
 3. How to run the experiment
 
 4. Trace Analysis
 
 5. Discussions
+(1) Why the acceptor maintain the queue instead of just one variable?
+Because we'd like to deal with multiple instances.
+(2) Why do have the denial request?
+The denial request is used to indicate the proposal whether the proposal number is smaller than the acceptor's expectation.
 
 
 This is a somewhat easy toy Paxos implementation.
