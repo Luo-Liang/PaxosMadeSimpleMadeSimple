@@ -1,5 +1,4 @@
-﻿#this serves as a Paxos node - a listener, a proposer and an accepter
-
+﻿#This serves as a Paxos node - a listener, a proposer and an accepter
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import argparse
@@ -19,7 +18,9 @@ proposerIPs = parseResult.node_ips
 proposerPorts = [int(x) for x in parseResult.proposer_ports]
 acceptorPorts = [int(x) for x in parseResult.acceptor_ports]
 
+# Initialize a proposer
 reactor.listenUDP(proposerPorts[servIndex], Proposer.ServerNode(zip(proposerIPs, acceptorPorts), len(proposerIPs), servIndex))
+# Initialize an acceptor
 reactor.listenUDP(acceptorPorts[servIndex], Acceptor.AcceptorNode())
 
 reactor.run()
