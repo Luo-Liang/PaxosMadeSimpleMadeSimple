@@ -116,7 +116,7 @@ class ServerNode(DatagramProtocol):
                 self.MajorityPromiseReceived = True
                 self.MajorityAcceptObj = acceptObj
             elif self.MajorityPromiseReceived:
-                self.transport.write(CommandObject.ConvertToString(acceptObj),address)
+                self.transport.write(CommandObject.ConvertToString(self.MajorityAcceptObj),address)
                 #no need to worry about this instance anymore, as recovery is
                 #not necessary.
                 #The burden is on acceptors - they could have promised to
