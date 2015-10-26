@@ -20,6 +20,8 @@ class ServerNode(DatagramProtocol):
         self.RequestQueue = Queue.deque()
         #self.ClientRequests = Queue.deque()
         self.Helping = False
+        self.MajorityPromiseReceived = False
+        self.MajorityAcceptObj = None
         #in order to support general application logic snap-ins, such as lock
         #service,
         #a processability will need to be tested before any attempt to process
@@ -36,6 +38,9 @@ class ServerNode(DatagramProtocol):
         self.CurrentRequestNumber+=self.ProposalNumberHop
         self.ReadyList = []
         self.AcceptanceCount = 0
+        self.MajorityPromiseReceived = False
+        self.MajorityAcceptObj = None
+
 
     def __PrintInternal__(self,content):
 #        if self.ServerIndex == 2:
@@ -76,8 +81,7 @@ class ServerNode(DatagramProtocol):
             self.__PrintInternal__("Promise Receive %s" % CommandObject.ConvertToString(cmdObj))
             self.ReadyList.append(cmdObj.Value + tuple([(host, port)]))
             instStat = self.ReadyList
-            if len(instStat) > self.AcceptorCount / 2:
-                #a consensus for that is reached.
+            if len(instStat) > self.AcceptorCount:
                 #issue an accept to everyone in the pool
                 #find the largest numbered accepted value
                 largestObj = max(instStat,key=lambda p: p[0])
@@ -109,6 +113,10 @@ class ServerNode(DatagramProtocol):
                     self.transport.write(CommandObject.ConvertToString(acceptObj),address)
                 #avoid other later messages to trigger this multiple times.
                 self.ReadyList = []
+                self.MajorityPromiseReceived = True
+                self.MajorityAcceptObj = acceptObj
+            elif self.MajorityPromiseReceived:
+                self.transport.write(CommandObject.ConvertToString(acceptObj),address)
                 #no need to worry about this instance anymore, as recovery is
                 #not necessary.
                 #The burden is on acceptors - they could have promised to
@@ -186,7 +194,8 @@ class ServerNode(DatagramProtocol):
                     #number
                     self.__PrintInternal__(str(requestProcessable))
                     self.__TakeHop__()
-                    #self.__PrintInternal__("Consensus Send %s" % CommandObject.ConvertToString(consensusObj))
+                    #self.__PrintInternal__("Consensus Send %s" %
+                    #CommandObject.ConvertToString(consensusObj))
                     self.CurrentInstanceId+=1
                     self.CurrentRequestNumber = 0
 
