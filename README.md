@@ -2,26 +2,20 @@
 ## Still not simple enough!
 ### Developer: Liang Luo & Ming Liu
 
-<<<<<<< HEAD
-1. Introduction
+#### 1. Introduction
 In this project, we implement a replicated state machine and use a simple lock service to demonstrate its correctness. Our implemenation is based on the traditional paxos paper. The whole project includes three parts: lock service client, paxos proposer, and paxos acceptor. The lock service client issues lock requests to a distinguised proposer, which uses the paxos algorithm to achieve the consensus among all the acceptors. We take the traditional paxos method that uses two phases protocols on both proposers and acceptors. Our design can handle multiple instances at the same time but can only execute them serially.
 The organization of this writeup is as follows: Section 2 talks in details about the design and implementation. Section 3 gives an example on how to use our codes. Section 4 presents some discussion. We end up with a case study and trace analysis.
 
-2. Design & Implementation
-2-1. Assumptions
-We make the following assumptions:
-(1) There is no message lost in the system;
-(2) Acceptors don't maintain the log and save everything in the stable storage;
-(3) Instances execute in serial;
-(4) No node recovery;
-(5) No message resending;
-=======
-#### 1. Introduction
-In this project, we implement a replicated state machine and use a simple Lock service to demonstrate it.
-
 #### 2. Design & Implementation
 ##### 2-1. Assumptions
->>>>>>> 2483f5189449a6b7924ce4cd8d05bce23d6b6024
+
+We make the following assumptions:
+
+- There is no message lost in the system;
+- Acceptors don't maintain the log and save everything in the stable storage;
+- Instances execute in serial;
+- No node recovery;
+- No message resending;
 
 ##### 2-2. Proposer
 
@@ -50,19 +44,19 @@ A minor optimization is used - sometimes no command in the queue can be executed
 One minor consequence of this is that the commands are executed out of order in the sense that the command from the same client to the same server may be out of order as well. However this is not a big issue at all: (1) the internet is itself out of order as we are using UDPs. (2) the client can simply execute in lock step for the commands that cannot be executed out of order. (3) we can just enforce the servers to not reorder commands from the same client to the same server. We took neither of the options and decided to let it be.
 
 
-2-4. Acceptor
+##### 2-3. Acceptor
 The data structure of the acceptor includes three queues: RequestNumberQueue, ConsensusQueue, and ProposalQueue. The RequestNumberQueue saves the highest accepted proposal number for each instance while the ConsensusQueue and ProposalQueue record the accepted value and promised proposal number of each instance.
 
 The protocol of the acceptor works as follows:
 (a) When it receives the PREPARE request, it firstly compares with its promised proposal number. If it's higher, the acceptor will send a promise request with a tuple <highest accepted number, accepted value>. Note that the highest accepted number is -1 in the beginning. Meanwhile, it also updates its ProposalQueue. If not, the acceptor will send a DENIAL request.
 (b) When it receives the ACCEPT request, it also compared with its promised pproposal number. If it's higher or equal, the acceptor will (1) accept this value, (2) send the acceptance knowledgement to the proposer, and (3)update its RequestNumberQueue and ConsensusQueue. If not, the acceptor will send a DENIAL request.
 
-3. How to run the experiment
+#### 3. Running the experiments
 Our codes are quite easy to use. We provide two scripts: run.sh and test.sh.
 run.sh --> Start three servers. Each server has three roles: proposer, acceptor and learner
 test.sh --> Choose running scenarios. We develop 7 scenarios to select. By sh test.sh, you can see detailed information. By sh test.sh <option>, you can run the case you choose.
 
-4. Discussions
+#### 4. Discussions
 (1) Why the acceptor maintain the queue instead of just one variable?
 Because we'd like to deal with multiple instances.
 (2) Why do have the denial request?
