@@ -3,7 +3,7 @@
 ### Developer: Liang Luo & Ming Liu
 
 #### 1. Introduction
-In this project, we implement a replicated state machine and use a simple lock service to demonstrate its correctness. Our implemenation is based on the traditional paxos paper. The whole project includes three parts: lock service client, paxos proposer, and paxos acceptor. The lock service client issues lock requests to a distinguised proposer, which uses the paxos algorithm to achieve the consensus among all the acceptors. We take the traditional paxos method that uses two phases protocols on both proposers and acceptors. Our design can handle multiple instances at the same time but can only execute them serially.
+In this project, we implement a replicated state machine and use a simple lock service to demonstrate its correctness. Our implemenation is based on the traditional paxos paper. The whole project includes three parts: lock service client, paxos purposer, and paxos acceptor. The lock service client issues lock requests to a distinguised purposer, which uses the paxos algorithm to achieve the consensus among all the acceptors. We take the traditional paxos method that uses two phases protocols on both purposers and acceptors. Our design can handle multiple instances at the same time but can only execute them serially.
 The organization of this writeup is as follows: Section 2 talks in details about the design and implementation. Section 3 gives an example on how to use our codes. Section 4 presents some discussion. We end up with a case study and trace analysis.
 
 #### 2. Design & Implementation
@@ -17,23 +17,23 @@ We make the following assumptions:
 - No node recovery;
 - No message resending;
 
-##### 2-2. Proposer
+##### 2-2. purposer
 
-In the original Paxos paper, Lamport purposed that proposers can skip ahead and execute sequences of Paxos requests concurrently. Here we strip off the ability of executing concurrent requests in favor of simplicity.
+In the original Paxos paper, Lamport purposed that purposers can skip ahead and execute sequences of Paxos requests concurrently. Here we strip off the ability of executing concurrent requests in favor of simplicity.
 
 ![Figure1](https://raw.github.com/Luo-Liang/PaxosMadeSimpleMadeSimple/master/figures/concurrentVsSerialPaxos.png)
 
 As shown above, the two implementations are functionally equivalent.
 
-We maintain the notion of a leader proposer, and this proposer is what users direct their requests to. By default, server indexed 0 is the leader proposer, and the clients know all requests should be sent to server indexed 0.
+We maintain the notion of a leader purposer, and this purposer is what users direct their requests to. By default, server indexed 0 is the leader purposer, and the clients know all requests should be sent to server indexed 0.
 
-The proposers are not eager, meaning they would not usually care about the consensus results unless they would like to propose. We choose this property because usually the distinguished proposer is alive, so there is no need to spam every proposer with consensus results. 
+The purposers are not eager, meaning they would not usually care about the consensus results unless they would like to propose. We choose this property because usually the distinguished purposer is alive, so there is no need to spam every purposer with consensus results. 
 
-In times of leader failure, secondary proposers must take place of it. It is the user's responsibility to realize the leader is down (this is usually done by using timeouts - however it is usually impossible to differentiate between "down" and "delayed", but luckily we do not require that). The requests are then delivered to server indexed 1 and so on. 
+In times of leader failure, secondary purposers must take place of it. It is the user's responsibility to realize the leader is down (this is usually done by using timeouts - however it is usually impossible to differentiate between "down" and "delayed", but luckily we do not require that). The requests are then delivered to server indexed 1 and so on. 
 
 To make sure duplicated requests are not executed, each request is associated with a sequence number, and servers only execute each command from each client once (though we skip this check in the execution logic for this matter).
 
-Proposers, because they are lazy, sometimes need to catch up with the latest happenings in the world. This also happens when new proposers are added. They would learn the previous consensus results by executing Paxos Consensus from instance 0 all the way up to the most recent, and then it tries to purpose whatever it wants in the current instance. Using this, we do not differentiate between newly added servers and lazy servers, and the situations are handled uniformly.
+purposers, because they are lazy, sometimes need to catch up with the latest happenings in the world. This also happens when new purposers are added. They would learn the previous consensus results by executing Paxos Consensus from instance 0 all the way up to the most recent, and then it tries to purpose whatever it wants in the current instance. Using this, we do not differentiate between newly added servers and lazy servers, and the situations are handled uniformly.
 
 Each request from a user is queued in a server local queue, and is executed in a serial manner when consensus is reached.
 
@@ -49,11 +49,11 @@ The data structure of the acceptor includes three queues: RequestNumberQueue, Co
 
 The protocol of the acceptor works as follows:
 (a) When it receives the PREPARE request, it firstly compares with its promised proposal number. If it's higher, the acceptor will send a promise request with a tuple <highest accepted number, accepted value>. Note that the highest accepted number is -1 in the beginning. Meanwhile, it also updates its ProposalQueue. If not, the acceptor will send a DENIAL request.
-(b) When it receives the ACCEPT request, it also compared with its promised pproposal number. If it's higher or equal, the acceptor will (1) accept this value, (2) send the acceptance knowledgement to the proposer, and (3)update its RequestNumberQueue and ConsensusQueue. If not, the acceptor will send a DENIAL request.
+(b) When it receives the ACCEPT request, it also compared with its promised pproposal number. If it's higher or equal, the acceptor will (1) accept this value, (2) send the acceptance knowledgement to the purposer, and (3)update its RequestNumberQueue and ConsensusQueue. If not, the acceptor will send a DENIAL request.
 
 #### 3. Running the experiments
 Our codes are quite easy to use. We provide two scripts: run.sh and test.sh.
-run.sh --> Start three servers. Each server has three roles: proposer, acceptor and learner
+run.sh --> Start three servers. Each server has three roles: purposer, acceptor and learner
 test.sh --> Choose running scenarios. We develop 7 scenarios to select. By sh test.sh, you can see detailed information. By sh test.sh <option>, you can run the case you choose.
 
 #### 4. Discussions
@@ -92,53 +92,53 @@ Here is a simple trace resulted from executing the following client commands,
 
 This instantiates 4 clients and send interleaved LOCK and UNLOCK commands. The expected result is that all 4 commands are executed, though order may vary.
 
-To give a little bit of background, 3 Paxos nodes are used, and they are located at *localhost:29367-29369*, and only print outs for Proposer 0 is shown to avoid distraction.
+To give a little bit of background, 3 Paxos nodes are used, and they are located at *localhost:29367-29369*, and only print outs for purposer 0 is shown to avoid distraction.
 
 Trace is analyzed in-line. And the format is shown below:
 
 -> *CommandType*:*InstanceId*:*RequestNumber*:*(value)* <- 
-> [Proposer 0] Request Receive REQUEST:-1 : -1:(22, 'UNLOCK', 'a')												  <br/>
-// Proposer has received the request to unlock a.																  <br/>
-> [Proposer 0] Prepared Issued PREPARE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')								  <br/>
-> [Proposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
-> [Proposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
+> [purposer 0] Request Receive REQUEST:-1 : -1:(22, 'UNLOCK', 'a')												  <br/>
+// purposer has received the request to unlock a.																  <br/>
+> [purposer 0] Prepared Issued PREPARE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')								  <br/>
+> [purposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
+> [purposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
 // A majority of promises are received. There is no need to wait on the other ones. Issue Accept messages.		  <br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
 // A majority of acceptances are received. 																  <br/>
 > LockService ID0 (22, 'UNLOCK', 'a') 																		  <br/>
 //A consensus has reached, so deliver this to application service. 											  <br/>
 //The following are almost identical.                            											  <br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(22, 'UNLOCK', 'a')										  <br/>
-> [Proposer 0] Request Receive REQUEST:-1 : -1:(23, 'LOCK', 'b')												  <br/>
-> [Proposer 0] Prepared Issued PREPARE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')								  <br/>
-> [Proposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
-> [Proposer 0] Request Receive REQUEST:-1 : -1:(21, 'LOCK', 'a')												  <br/>
-> [Proposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
-> [Proposer 0] Request Receive REQUEST:-1 : -1:(24, 'UNLOCK', 'b')												  <br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')							  <br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')							  <br/>
+> [purposer 0] Consensus Reached ---->RESPOND:-1 : -1:(22, 'UNLOCK', 'a')										  <br/>
+> [purposer 0] Request Receive REQUEST:-1 : -1:(23, 'LOCK', 'b')												  <br/>
+> [purposer 0] Prepared Issued PREPARE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')								  <br/>
+> [purposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
+> [purposer 0] Request Receive REQUEST:-1 : -1:(21, 'LOCK', 'a')												  <br/>
+> [purposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
+> [purposer 0] Request Receive REQUEST:-1 : -1:(24, 'UNLOCK', 'b')												  <br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')							  <br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')							  <br/>
 > LockService ID0 (23, 'LOCK', 'b')																				  <br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(23, 'LOCK', 'b')											  <br/>
-> [Proposer 0] Prepared Issued PREPARE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')								  <br/>
-> [Proposer 0] Packet Ignored PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))							  <br/>
+> [purposer 0] Consensus Reached ---->RESPOND:-1 : -1:(23, 'LOCK', 'b')											  <br/>
+> [purposer 0] Prepared Issued PREPARE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')								  <br/>
+> [purposer 0] Packet Ignored PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))							  <br/>
 // A dated Promise from Instance 0 Request 0 has received, and we just ignored it.									  <br/>
-> [Proposer 0] Packet Ignored PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
-> [Proposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
-> [Proposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')							  <br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')							  <br/>
+> [purposer 0] Packet Ignored PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
+> [purposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
+> [purposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')							  <br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')							  <br/>
 > LockService ID0 (21, 'LOCK', 'a')																				  <br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(21, 'LOCK', 'a')						<br/>
-> [Proposer 0] Prepared Issued PREPARE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')			<br/>
-> [Proposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
-> [Proposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
-> [Proposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
+> [purposer 0] Consensus Reached ---->RESPOND:-1 : -1:(21, 'LOCK', 'a')						<br/>
+> [purposer 0] Prepared Issued PREPARE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')			<br/>
+> [purposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
+> [purposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
+> [purposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
 > LockService ID0 (24, 'UNLOCK', 'b')														<br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(24, 'UNLOCK', 'b')					<br/>
-> [Proposer 0] Packet Ignored PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))		<br/>
-> [Proposer 0] Packet Ignored PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))		<br/>
+> [purposer 0] Consensus Reached ---->RESPOND:-1 : -1:(24, 'UNLOCK', 'b')					<br/>
+> [purposer 0] Packet Ignored PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))		<br/>
+> [purposer 0] Packet Ignored PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))		<br/>
 																							
 As another illustration, consider the following command and its resulting trace.			
 																							
@@ -191,4 +191,4 @@ LockService ID0: 25-27-28-26 <br/>
 LockService ID1: 25-27-28-26-30-31-29-32 <br/>
 LockService ID2: 25-27-28-26-30-31-29-32-33-35-34-36-33 <br/>
 
-Note that according to the lazy proposer design, since node0 and node1 have no more requests, they stopped learning consensus values when they finished processing their requests. The semantic meaning of this trace is obvious. Note the interest part here is request 33 is attempted twice because it cannot be executed due to lock A is unavailable at the first time. It is subsequently attempted.
+Note that according to the lazy purposer design, since node0 and node1 have no more requests, they stopped learning consensus values when they finished processing their requests. The semantic meaning of this trace is obvious. Note the interest part here is request 33 is attempted twice because it cannot be executed due to lock A is unavailable at the first time. It is subsequently attempted.
