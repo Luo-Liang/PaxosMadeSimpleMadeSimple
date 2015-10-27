@@ -107,17 +107,17 @@ Trace is analyzed in-line. And the format is shown below:
 > LockService ID0 (22, 'UNLOCK', 'a') <br/>
 //A consensus has reached, deliver this to application service. <br/>
 //The following are almost identical.                           <br/> 
-> [Proposer 0] Consensus Reached ---->RESPOND:-1:-1:(22, 'UNLOCK', 'a')						<br/>
-> [Proposer 0] Request Receive REQUEST:-1:-1:(23, 'LOCK', 'b')								<br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(22, 'UNLOCK', 'a')						<br/>
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(23, 'LOCK', 'b')								<br/>
 > [Proposer 0] Prepared Issued PREPARE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')			<br/>
 > [Proposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))		<br/>
-> [Proposer 0] Request Receive REQUEST:-1:-1:(21, 'LOCK', 'a')								<br/>
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(21, 'LOCK', 'a')								<br/>
 > [Proposer 0] Promise Receive PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))		<br/>
-> [Proposer 0] Request Receive REQUEST:-1:-1:(24, 'UNLOCK', 'b')							<br/>
+> [Proposer 0] Request Receive REQUEST:-1 : -1:(24, 'UNLOCK', 'b')							<br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')		<br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:1:0:('127.0.0.1', 40108, 23, 'LOCK', 'b')		<br/>
 > LockService ID0 (23, 'LOCK', 'b')															<br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1:-1:(23, 'LOCK', 'b')						<br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(23, 'LOCK', 'b')						<br/>
 > [Proposer 0] Prepared Issued PREPARE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')			<br/>
 > [Proposer 0] Packet Ignored PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))		<br/>
 // A dated Promise from Instance 0 Request 0 has received, we just ignore it.				<br/>
@@ -127,14 +127,14 @@ Trace is analyzed in-line. And the format is shown below:
 > [Proposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')		<br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')		<br/>
 > LockService ID0 (21, 'LOCK', 'a')															<br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1:-1:(21, 'LOCK', 'a')						<br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(21, 'LOCK', 'a')						<br/>
 > [Proposer 0] Prepared Issued PREPARE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')			<br/>
 > [Proposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
 > [Proposer 0] Promise Receive PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))	<br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:3:0:('127.0.0.1', 56120, 24, 'UNLOCK', 'b')	<br/>
 > LockService ID0 (24, 'UNLOCK', 'b')														<br/>
-> [Proposer 0] Consensus Reached ---->RESPOND:-1:-1:(24, 'UNLOCK', 'b')						<br/>
+> [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(24, 'UNLOCK', 'b')						<br/>
 > [Proposer 0] Packet Ignored PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))		<br/>
 > [Proposer 0] Packet Ignored PROMISE:3:0:(-1, ('127.0.0.1', 56120, 24, 'UNLOCK', 'b'))		<br/>
 																							<br/>
