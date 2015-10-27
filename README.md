@@ -71,7 +71,7 @@ where:
 - **action** is either **lock** or **unlock**
 - **object** is the name of the lock to be operated on
 
-Lock will only return when it is successfully acquired, while unlock returns immediately after consensus.
+Lock() will only return when it is successfully acquired, while Unlock() returns immediately after consensus.
 
 ##### 6.1 Trace Analysis
 
@@ -82,9 +82,9 @@ Here is a simple trace resulted from executing the following client commands,
 	printf "REQUEST:-1:-1:(23,'LOCK','b')" | nc -u 127.0.0.1 29367 &
 	printf "REQUEST:-1:-1:(24,'UNLOCK','b')" | nc -u 127.0.0.1 29367 &
 
-Basically this instantiate 4 clients and send interleaved LOCK and UNLOCK commands. The expected result is that all 4 commands are executed, though order may vary.
+This instantiates 4 clients and send interleaved LOCK and UNLOCK commands. The expected result is that all 4 commands are executed, though order may vary.
 
-To give a little bit of background, 3 Paxos node is used, and they are located at *localhost:29367-29369*, and only print outs for Proposer 0 is shown to avoid distracting.
+To give a little bit of background, 3 Paxos nodes are used, and they are located at *localhost:29367-29369*, and only print outs for Proposer 0 is shown to avoid distraction.
 
 Trace is analyzed in-line. And the format is shown below:
 
@@ -94,12 +94,12 @@ Trace is analyzed in-line. And the format is shown below:
 > [Proposer 0] Prepared Issued PREPARE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')								  <br/>
 > [Proposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
 > [Proposer 0] Promise Receive PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))						  <br/>
-// A majority of promises is received. There is no need to wait on the other ones. Issue Accept messages.		  <br/>
+// A majority of promises are received. There is no need to wait on the other ones. Issue Accept messages.		  <br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
 > [Proposer 0] Acceptance Received ACCEPTANCE:0:0:('127.0.0.1', 46995, 22, 'UNLOCK', 'a')						  <br/>
 // A majority of acceptances are received. 																  <br/>
 > LockService ID0 (22, 'UNLOCK', 'a') 																		  <br/>
-//A consensus has reached, deliver this to application service. 											  <br/>
+//A consensus has reached, so deliver this to application service. 											  <br/>
 //The following are almost identical.                            											  <br/>
 > [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(22, 'UNLOCK', 'a')										  <br/>
 > [Proposer 0] Request Receive REQUEST:-1 : -1:(23, 'LOCK', 'b')												  <br/>
@@ -114,7 +114,7 @@ Trace is analyzed in-line. And the format is shown below:
 > [Proposer 0] Consensus Reached ---->RESPOND:-1 : -1:(23, 'LOCK', 'b')											  <br/>
 > [Proposer 0] Prepared Issued PREPARE:2:0:('127.0.0.1', 59905, 21, 'LOCK', 'a')								  <br/>
 > [Proposer 0] Packet Ignored PROMISE:0:0:(-1, ('127.0.0.1', 46995, 22, 'UNLOCK', 'a'))							  <br/>
-// A dated Promise from Instance 0 Request 0 has received, we just ignore it.									  <br/>
+// A dated Promise from Instance 0 Request 0 has received, and we just ignored it.									  <br/>
 > [Proposer 0] Packet Ignored PROMISE:1:0:(-1, ('127.0.0.1', 40108, 23, 'LOCK', 'b'))							  <br/>
 > [Proposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
 > [Proposer 0] Promise Receive PROMISE:2:0:(-1, ('127.0.0.1', 59905, 21, 'LOCK', 'a'))							  <br/>
