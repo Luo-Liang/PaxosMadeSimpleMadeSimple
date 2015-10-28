@@ -192,3 +192,6 @@ LockService ID1: 25-27-28-26-30-31-29-32 <br/>
 LockService ID2: 25-27-28-26-30-31-29-32-33-35-34-36-33 <br/>
 
 Note that according to the lazy purposer design, since node0 and node1 have no more requests, they stopped learning consensus values when they finished processing their requests. The semantic meaning of this trace is obvious. Note the interest part here is request 33 is attempted twice because it cannot be executed due to lock A is unavailable at the first time. It is subsequently attempted.
+
+#### Limitations
+There is a case where the catch-up server needs to purpose from 0 to a certain high number before it can learn the consensus for a past instance. This is due to the fact we don't differentiate between newly added server and a slow server.
